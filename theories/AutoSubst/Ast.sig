@@ -24,6 +24,6 @@ tId : term -> term -> term -> term
 tRefl : term -> term -> term
 tIdElim : term -> term -> (bind term , term in term) -> term -> term -> term -> term
 
-tQuote : term -> term
+tQuote : term -> term -> term
 tStep : term -> term -> term
 tReflect : term -> term -> term

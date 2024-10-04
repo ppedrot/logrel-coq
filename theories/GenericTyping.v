@@ -313,9 +313,10 @@ Section GenericTyping.
       [Γ |- y : A] ->
       [Γ |- e : tId A x y] ->
       [Γ |- tIdElim A x P hr y e : P[e .: y..]];
-    ty_quote {Γ} {t} :
-      [ Γ |- t ≅ t : arr tNat tNat ] ->
-      [ Γ |- tQuote t : tNat ];
+    ty_quote {Γ} {A t} :
+      [ Γ |- A ] ->
+      [ Γ |- t ≅ t : A ] ->
+      [ Γ |- tQuote A t : tNat ];
     ty_step {Γ} {t u} :
       [ Γ |- t ≅ t : arr tNat tNat ] ->
       [ Γ |- u ≅ u : tNat ] ->
@@ -462,11 +463,13 @@ Section GenericTyping.
       [Γ |- y ≅ y' : A] ->
       [Γ |- e ~ e' : tId A x y] ->
       [Γ |- tIdElim A x P hr y e ~ tIdElim A' x' P' hr' y' e' : P[e .: y..]];
-    convneu_quote {Γ n n'} :
-        [Γ |- n ≅ n' : arr tNat tNat] ->
+    convneu_quote {Γ A A' n n'} :
+        [Γ |- A] ->
+        [Γ |- A ≅ A'] ->
+        [Γ |- n ≅ n' : A] ->
         dnf n -> dnf n' ->
         ~ closed0 n -> ~ closed0 n' ->
-        [Γ |- tQuote n ~ tQuote n' : tNat];
+        [Γ |- tQuote A n ~ tQuote A' n' : tNat];
     convneu_step {Γ t t' t₀ u u' u₀} :
       [Γ |- t ≅ t' : arr tNat tNat] ->
       [Γ |- u ≅ u' : tNat] ->
@@ -576,13 +579,15 @@ Section GenericTyping.
       [Γ |- y : A] ->
       [Γ |- e ⤳* e' : tId A x y] ->
       [Γ |- tIdElim A x P hr y e ⤳* tIdElim A x P hr y e' : P[e .: y..]];
-    redtm_evalquote {Γ t} :
-      [Γ |- t ≅ t : arr tNat tNat] -> dnf t -> closed0 t ->
-      [Γ |- tQuote t ⤳* qNat (quote (erase t)) : tNat];
-    redtm_quote {Γ t t'} :
-      [Γ |- t ≅ t' : arr tNat tNat] ->
+    redtm_evalquote {Γ A t} :
+      [Γ |- A] ->
+      [Γ |- t ≅ t : A] -> dnf t -> closed0 t ->
+      [Γ |- tQuote A t ⤳* qNat (quote (erase t)) : tNat];
+    redtm_quote {Γ A t t'} :
+      [Γ |- A] ->
+      [Γ |- t ≅ t' : A] ->
       [ t ⇶* t' ] ->
-      [Γ |- tQuote t ⤳* tQuote t' : tNat ];
+      [Γ |- tQuote A t ⤳* tQuote A t' : tNat ];
     redtm_evalstep {Γ t u k n} :
       [Γ |- t ≅ t : arr tNat tNat] ->
       [Γ |- run : arr tNat (arr tNat tPNat)] ->
@@ -1935,7 +1940,7 @@ Proof.
 Qed.
 
 Lemma tTotal_cong {Γ t t' u u'} :
-  [Γ |- tApp (tApp run (tQuote t)) u ≅ tApp (tApp run (tQuote t')) u' : arr tNat tNat] ->
+  [Γ |- tApp (tApp run (tQuote (arr tNat tNat) t)) u ≅ tApp (tApp run (tQuote (arr tNat tNat) t')) u' : arr tNat tNat] ->
   [Γ |- tStep t u ~ tStep t' u' : tNat] ->
   [Γ |- tApp t u ≅ tApp t' u' : tNat] ->
   [Γ |- tTotal t u ≅ tTotal t' u' : U].

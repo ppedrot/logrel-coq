@@ -205,7 +205,7 @@ Qed.
 (** Derived notions from the model *)
 
 Definition tTotal t u :=
-  tEval (tApp (tApp run (tQuote t)) u) (tStep t u) (tApp t u).
+  tEval (tApp (tApp run (tQuote (tProd tNat tNat) t)) u) (tStep t u) (tApp t u).
 (** eval (run (quote t) u) (step t u) (t u) *)
 
 Lemma tTotal_ren : forall t u ρ,

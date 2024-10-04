@@ -152,28 +152,32 @@ destruct vt as (t₀&u₀&[]&[]&?&?&?).
 exists t₀; try now prod_splitter.
 Qed.
 
-  Lemma QuoteEvalRedEq : forall Γ l t t₀ (rNat : [Γ ||-<l> tNat]),
-    [Γ |- t ≅ t₀ : tPNat] -> [t ⇶* t₀] -> dnf t₀ -> closed0 t₀ -> eqnf t t₀ ->
-    [Γ ||-<l> tQuote t ≅ qNat (quote (erase t)) : tNat | rNat ].
+  Lemma QuoteEvalRedEq : forall Γ l A t t₀ (rNat : [Γ ||-<l> tNat]),
+    [Γ |- A] ->
+    [Γ |- t ≅ t₀ : A] -> [t ⇶* t₀] -> dnf t₀ -> closed0 t₀ -> eqnf t t₀ ->
+    [Γ ||-<l> tQuote A t ≅ qNat (quote (erase t)) : tNat | rNat ].
   Proof.
   intros.
   eapply redSubstTerm.
   + eapply qNatRed.
-  + transitivity (tQuote t₀).
+  + transitivity (tQuote A t₀).
     - now apply redtm_quote.
     - replace (erase t) with (erase t₀).
       apply redtm_evalquote; tea.
       now eapply urefl.
   Qed.
 
-  Lemma QuoteRedEq : forall Γ l t t' (rNat : [Γ ||-<l> tNat]),
-    [Γ |- t ≅ t' : arr tNat tNat] ->
-    [Γ ||-<l> tQuote t ≅ tQuote t' : tNat | rNat ].
+  Lemma QuoteRedEq : forall Γ l A A' t t' (rNat : [Γ ||-<l> tNat]),
+    [Γ |- A] ->
+    [Γ |- A'] ->
+    [Γ |- A ≅ A'] ->
+    [Γ |- t ≅ t' : A] ->
+    [Γ ||-<l> tQuote A t ≅ tQuote A' t' : tNat | rNat ].
   Proof.
-  intros * rtt'.
+  intros * rA rA' rAA' rtt'.
   assert (rΓ : [|- Γ]) by now eapply wfc_wft, escape.
   unshelve (irrelevance0; [reflexivity|]); [tea|now apply natRed|].
-  assert (re : [Γ |- t ≅ t' : arr tNat tNat]) by eauto.
+  assert (re : [Γ |- t ≅ t' : A]) by eauto.
   apply snty_nf in re.
   destruct re as (l₀&r₀&[]&[]&?&?&?).
   remember (is_closedn 0 l₀) as b eqn:Hc; symmetry in Hc.
@@ -183,88 +187,103 @@ Qed.
   - pose (q := qNat (quote (erase l₀))).
     exists q q.
     + constructor; [now apply ty_qNat|].
-      transitivity (tQuote l₀).
+      transitivity (tQuote A l₀).
       * apply redtm_quote; tea.
       * apply redtm_evalquote; tea.
         now eapply urefl.
     + constructor; [now apply ty_qNat|].
-      transitivity (tQuote r₀).
+      transitivity (tQuote A' r₀).
       * apply redtm_quote; tea.
+        now eapply convtm_conv.
       * unfold q; rewrite e.
         apply redtm_evalquote; tea.
-        now eapply urefl.
+        eapply convtm_conv; [eapply urefl|]; tea.
     + now apply convtm_qNat.
     + apply qNatRedEq0.
-  - assert [Γ |-[ ta ] tQuote l₀ ~ tQuote r₀ : tNat].
+  - assert [Γ |-[ ta ] tQuote A l₀ ~ tQuote A' r₀ : tNat].
     { apply convneu_quote; tea.
       + transitivity t; [now symmetry|].
         transitivity t'; tea.
       + unfold closed0; destruct is_closedn; cbn; congruence.
       + unfold closed0; destruct is_closedn; cbn; congruence. }
-    exists (tQuote l₀) (tQuote r₀).
+    exists (tQuote A l₀) (tQuote A' r₀).
     + constructor; [now eapply ty_quote, urefl|].
       apply redtm_quote; tea.
-    + constructor; [now eapply ty_quote, urefl|].
+    + assert [Γ |-[ ta ] t' ≅ r₀ : A'] by now eapply convtm_conv.
+      constructor; [now eapply ty_quote, urefl|].
       apply redtm_quote; tea.
     + apply convtm_convneu; tea.
     + constructor; constructor; tea.
   Qed.
 
-  Lemma QuoteRed : forall Γ l t (rNat : [Γ ||-<l> tNat]),
-    [Γ |- t ≅ t : arr tNat tNat] ->
-    [Γ ||-<l> tQuote t : tNat | rNat ].
+  Lemma QuoteRed : forall Γ l A t (rNat : [Γ ||-<l> tNat]),
+    [Γ |- A] ->
+    [Γ |- A ≅ A] ->
+    [Γ |- t ≅ t : A] ->
+    [Γ ||-<l> tQuote A t : tNat | rNat ].
   Proof.
     intros.
     now eapply LRTmEqRed_l, QuoteRedEq.
   Qed.
 
-  Context {Γ l t} (vΓ : [||-v Γ])
+  Context {Γ l A t} (vΓ : [||-v Γ])
+    (vA : [ Γ ||-v< l > A | vΓ ])
     (vNat := natValid (l := l) vΓ)
-    (vArr := simpleArrValid vΓ vNat vNat)
-    (vt : [ Γ ||-v< l > t : arr tNat tNat | vΓ | vArr ])
+    (vt : [ Γ ||-v< l > t : A | vΓ | vA ])
   .
 
-  Lemma QuoteValid : [ Γ ||-v< l > tQuote t : tNat | vΓ | vNat ].
+  Lemma QuoteValid : [ Γ ||-v< l > tQuote A t : tNat | vΓ | vNat ].
   Proof.
     econstructor.
     - intros Δ σ tΔ vσ; cbn in *.
       destruct vt as [vt0 vte].
       specialize (vt0 _ _ _ vσ).
-      assert (Hv : [Δ |- t[σ] : arr tNat tNat]).
+      assert [Δ  |- A[σ]].
+      { now eapply escape, vA. }
+      assert [Δ |-[ ta ] A[σ] ≅ A[σ]].
+      { unshelve eapply escapeEq, vA; eauto using reflSubst. }
+      assert (Hv : [Δ |- t[σ] : A[σ]]).
       { now eapply escapeTerm. }
       destruct (nf_eval vt0) as [r [Hdnf [Hr Hconv]]].
-      assert ([Δ |- tQuote t[σ] ⤳* tQuote r : tNat]).
+      assert ([Δ |- tQuote A[σ] t[σ] ⤳* tQuote A[σ] r : tNat]).
       { apply redtm_quote; tea. }
-      assert [Δ |- r ≅ r : arr tNat tNat].
+      assert [Δ |- r ≅ r : A[σ]].
       { etransitivity; [symmetry|]; tea. }
-      assert [Δ |- tQuote r : tNat ].
+      assert [Δ |- tQuote A[σ] r : tNat ].
       { now apply ty_quote. }
       pose (c := is_closedn 0 r); assert (is_closedn 0 r = c) as Hc by reflexivity; destruct c.
       + pose (q := qNat (quote (erase r))).
         exists q; [|now apply convtm_qNat|apply qNatRed0].
         constructor.
         { now apply ty_qNat. }
-        { transitivity (tQuote r); [tea|].
+        { transitivity (tQuote A[σ] r); [tea|].
           now apply redtm_evalquote. }
       + assert (~ closed0 r).
         { unfold closed0; intros; destruct is_closedn; congruence. }
-        exists (tQuote r).
+        exists (tQuote A[σ] r).
         * split; [|tea].
           now apply ty_quote.
         * apply convtm_convneu, convneu_quote; tea.
         * apply NatRedTm.neR; constructor; tea.
-          now apply convneu_quote.
+          apply convneu_quote; tea.
   - intros Δ σ σ' tΔ vσ vσ' vσσ'.
     destruct vt as [vt0 vte].
-    assert [Δ |- t[σ] : arr tNat tNat].
+    assert [Δ  |- A[σ]].
+    { now eapply escape, vA. }
+    assert [Δ  |- A[σ']].
+    { now eapply escape, vA. }
+    assert [Δ |-[ ta ] A[σ] ≅ A[σ']].
+    { now eapply escapeEq, vA. }
+    assert [Δ |- t[σ] : A[σ]].
     { unshelve eapply escapeTerm, vt0; tea. }
-    assert [Δ |- t[σ'] : arr tNat tNat].
+    assert [Δ |- t[σ'] : A[σ']].
     { unshelve eapply escapeTerm, vt0; tea. }
+    cbn [subst1 Subst_term subst_term].
     unshelve eapply QuoteRedEq, escapeEqTerm, vte; cbn; tea.
   Qed.
 
 Lemma evalQuoteValid : dnf t -> closed0 t ->
-  [Γ ||-v<l> tQuote t ≅ qNat (quote (erase t)) : tNat | vΓ | vNat].
+  [Γ ||-v<l> tQuote A t ≅ qNat (quote (erase t)) : tNat | vΓ | vNat].
 Proof.
 destruct SN as [sn].
 econstructor.
@@ -274,12 +293,14 @@ assert (vtt0 := vt0 Δ σ tΔ vσ).
 unshelve eassert (vte0 := vte Δ σ σ tΔ vσ vσ _).
 { apply reflSubst. }
 apply escapeEqTerm, sn in vte0 as (t₀&u₀&[]&[]&?&?&?); cbn in *.
-assert [Δ |-[ ta ] t[σ] : tProd tNat tNat].
+assert [Δ  |- A[σ]].
+{ now eapply escape, vA. }
+assert [Δ |-[ ta ] t[σ] : A[σ]].
 { eapply escapeTerm, vtt0. }
 pose (q := qNat (quote (erase t₀))).
 exists q q; cbn in *.
 - constructor; [now apply ty_qNat|].
-  transitivity (tQuote t₀).
+  transitivity (tQuote A[σ] t₀).
   + apply redtm_quote; tea.
   + apply redtm_evalquote; tea.
     * now eapply urefl.
@@ -300,24 +321,33 @@ Section QuoteCongValid.
 Context `{GenericTypingProperties}.
 Context {SN : SNTypingProperties ta _ _ _ _ _}.
 
-Context {Γ l t t'}
+Context {Γ l A A' t t'}
   (vΓ : [||-v Γ])
+  (vA : [ Γ ||-v< l > A | vΓ ])
+  (vA' : [ Γ ||-v< l > A' | vΓ ])
+  (vAA' : [ Γ ||-v< l > A ≅ A' | vΓ | vA ])
   (vNat := natValid (l := l) vΓ)
-  (vArr := simpleArrValid vΓ vNat vNat)
-  (vt : [Γ ||-v<l> t : arr tNat tNat | vΓ | vArr])
-  (vt' : [Γ ||-v<l> t' : arr tNat tNat | vΓ | vArr])
+  (vt : [Γ ||-v<l> t : A | vΓ | vA])
+  (vt' : [Γ ||-v<l> t' : A' | vΓ | vA'])
 .
 
 Lemma QuoteCongValid :
-  [Γ ||-v<l> t ≅ t' : arr tNat tNat | vΓ | vArr] ->
-  [Γ ||-v<l> tQuote t ≅ tQuote t' : tNat | vΓ | vNat].
+  [Γ ||-v<l> t ≅ t' : A | vΓ | vA] ->
+  [Γ ||-v<l> tQuote A t ≅ tQuote A' t' : tNat | vΓ | vNat].
 Proof.
 intros [vte]; constructor.
 intros Δ σ tΔ vσ.
-assert [Δ |- t[σ] : arr tNat tNat].
+assert [Δ  |- A[σ]].
+{ now eapply escape, vA. }
+assert [Δ  |- A'[σ]].
+{ now eapply escape, vA'. }
+assert [Δ  |- A[σ] ≅ A'[σ]].
+{ now unshelve eapply escapeEq, vAA'. }
+assert [Δ |- t[σ] : A[σ]].
 { unshelve eapply escapeTerm, vt; tea. }
-assert [Δ |- t'[σ] : arr tNat tNat].
+assert [Δ |- t'[σ] : A'[σ]].
 { unshelve eapply escapeTerm, vt'; tea. }
+cbn [subst1 Subst_term subst_term].
 unshelve eapply QuoteRedEq, escapeEqTerm, vte; cbn; tea.
 Qed.
 

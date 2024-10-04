@@ -123,8 +123,7 @@ Section TypingWk.
         * rewrite <- wk_up_wk1, wk1_ren_on; cbn; constructor; tea; constructor.
       + rewrite wk_refl, <- subst_ren_wk_up2; eauto.
     - intros * _ IH **; cbn.
-      econstructor.
-      now apply IH.
+      econstructor; eauto.
     - intros; cbn; constructor; eauto.
       + now change (arr tNat tNat) with (arr tNat tNat)⟨ρ⟩.
       + rewrite <- run_ren with (ρ := ρ); now apply H4.
@@ -175,10 +174,9 @@ Section TypingWk.
     - intros * H IH **; cbn.
       unfold ren1, Ren1_well_wk.
       rewrite quote_ren; eauto using wk_inj.
-      constructor; [now apply IH|now apply dnf_ren|now apply closed0_ren].
+      constructor; [now eauto|now eauto|now apply dnf_ren|now apply closed0_ren].
     - intros * * He IHe **; cbn.
-      constructor.
-      now apply IHe.
+      constructor; now eauto.
     - intros * ? IHt ? IHrun ?? ? IHnil ? IHval **.
       cbn; unfold ren1, Ren1_well_wk.
       rewrite !qNat_ren.
@@ -578,7 +576,9 @@ apply tEval_decl_cong.
 - eapply simple_TermAppCong with tNat; tea.
   eapply simple_TermAppCong with tNat.
   * now apply TermRefl.
-  * now apply TermQuoteCong.
+  * apply TermQuoteCong; eauto.
+    + now repeat constructor.
+    + now repeat constructor.
 - apply TermStepCong; tea.
 - cbn; now eapply simple_TermAppCong with tNat.
 Qed.
@@ -838,9 +838,9 @@ Module DeclarativeTypingProperties.
       now constructor.
     + now constructor.
   - intros; split.
-    + econstructor; now eapply lrefl.
+    + econstructor; [tea|now eapply lrefl].
     + now apply redalg_quote.
-    + now constructor.
+    + constructor; eauto; now constructor.
   - intros.
     assert [|- Γ] by gen_typing.
     split.

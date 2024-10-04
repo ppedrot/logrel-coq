@@ -3,6 +3,8 @@ From Coq Require Import CRelationClasses ssrbool.
 From LogRel.AutoSubst Require Import core unscoped Ast Extra.
 From LogRel Require Import Utils BasicAst Computation Notations Context Closed NormalForms NormalEq Weakening.
 
+#[local] Hint Unfold notT : core.
+
 (** ** Reductions *)
 
 (** Step-indexed normalization function *)
@@ -140,11 +142,14 @@ Definition eval_body (eval : bool -> term -> option term) (murec : term -> optio
       let* t := eval true t in
       Some (tRefl A t)
     else Some (tRefl A t)
-  | tQuote t =>
+  | tQuote A t =>
     let* t := eval true t in
     if is_closedn 0 t then
       Some (qNat (quote (erase t)))
-    else Some (tQuote t)
+    else if deep then
+      let* A := eval true A in
+      Some (tQuote A t)
+    else Some (tQuote A t)
   | tStep t u =>
     let* t := eval true t in
     let* u := eval true u in
@@ -203,8 +208,8 @@ Inductive bigstep : bool -> term -> term -> Set :=
 | bs_refl : forall A t, [tRefl A t ↓ tRefl A t]
 | bs_idElim_refl : forall A A₀ x x₀ P hr y e r, [e ↓ tRefl A₀ x₀] -> [hr ↓ r] -> [tIdElim A x P hr y e ↓ r]
 | bs_idElim_ne : forall A x P hr y e e₀, [e ↓ e₀] -> whne e₀ -> [tIdElim A x P hr y e ↓ tIdElim A x P hr y e₀]
-| bs_quote_eval : forall t t₀, [t ⇊ t₀] -> closed0 t₀ -> [tQuote t ↓ qNat (quote (erase t₀))]
-| bs_quote_ne : forall t t₀, [t ⇊ t₀] -> ~ closed0 t₀ -> [tQuote t ↓ tQuote t₀]
+| bs_quote_eval : forall A t t₀, [t ⇊ t₀] -> closed0 t₀ -> [tQuote A t ↓ qNat (quote (erase t₀))]
+| bs_quote_ne : forall A t t₀, [t ⇊ t₀] -> ~ closed0 t₀ -> [tQuote A t ↓ tQuote A t₀]
 | bs_step_eval : forall t t₀ u u₀ n k k',
   [t ⇊ t₀] -> [u ⇊ qNat u₀] -> closed0 t₀ ->
   murec (fun k => eval true (tApp (erase t₀) (qNat u₀)) k) k = Some (k', qNat n) ->
@@ -248,8 +253,8 @@ Inductive bigstep : bool -> term -> term -> Set :=
 | dbs_idElim_refl : forall A A₀ x x₀ P hr y e r, [e ↓ tRefl A₀ x₀] -> [hr ⇊ r] -> [tIdElim A x P hr y e ⇊ r]
 | dbs_idElim_ne : forall A A₀ x x₀ P P₀ hr hr₀ y y₀ e n e₀, [e ↓ n] -> whne n ->
   [A ⇊ A₀] -> [x ⇊ x₀] -> [P ⇊ P₀] -> [hr ⇊ hr₀] -> [y ⇊ y₀] -> [n ⇊ e₀] -> [tIdElim A x P hr y e ⇊ tIdElim A₀ x₀ P₀ hr₀ y₀ e₀]
-| dbs_quote_eval : forall t t₀, [t ⇊ t₀] -> closed0 t₀ -> [tQuote t ⇊ qNat (quote (erase t₀))]
-| dbs_quote_ne : forall t t₀, [t ⇊ t₀] -> ~ closed0 t₀ -> [tQuote t ⇊ tQuote t₀]
+| dbs_quote_eval : forall A t t₀, [t ⇊ t₀] -> closed0 t₀ -> [tQuote A t ⇊ qNat (quote (erase t₀))]
+| dbs_quote_ne : forall A A₀ t t₀, [t ⇊ t₀] -> ~ closed0 t₀ -> [A ⇊ A₀] -> [tQuote A t ⇊ tQuote A₀ t₀]
 | dbs_step_eval : forall t t₀ u u₀ n k k',
   [t ⇊ t₀] -> [u ⇊ qNat u₀] -> closed0 t₀ ->
   murec (fun k => eval true (tApp (erase t₀) (qNat u₀)) k) k = Some (k', qNat n) ->
@@ -406,6 +411,12 @@ all: try now (
     destruct deep; [|congruence].
     repeat expandopt.
     repeat (erewrite IHk; [|Lia.lia|tea]); cbn; congruence.
++ repeat expandopt.
+  erewrite IHk; [|Lia.lia|tea]; cbn [bindopt].
+  casenf; [now eauto|].
+  destruct deep; [|congruence].
+  repeat expandopt.
+  erewrite IHk; [tea|Lia.lia|tea].
 + repeat expandopt.
   erewrite IHk; [|Lia.lia|tea]; cbn [bindopt].
   erewrite IHk; [|Lia.lia|tea]; cbn [bindopt].
@@ -670,10 +681,10 @@ Inductive OneRedAlg {deep : bool} : term -> term -> Type :=
 | idElimSubst {A x P hr y e e'} :
   OneRedAlg (deep := false) e e' ->
   [ tIdElim A x P hr y e ⤳ tIdElim A x P hr y e' ]
-| termEvalAlg {t} :
+| termEvalAlg {A t} :
   dnf t ->
   closed0 t ->
-  [ tQuote t ⤳ qNat (quote (erase t)) ]
+  [ tQuote A t ⤳ qNat (quote (erase t)) ]
 | termStepAlg {t u n k k'} :
   dnf t ->
   closed0 t ->
@@ -753,9 +764,13 @@ Inductive OneRedAlg {deep : bool} : term -> term -> Type :=
 | idElimRHS {A x P hr y y' e} : deep ->
   dne e -> dnf A -> dnf x -> dnf P -> dnf hr ->
   [ y ⤳ y' ] -> [ tIdElim A x P hr y e ⤳ tIdElim A x P hr y' e ]
-| quoteSubst {t t'} :
+| quoteSubst {A t t'} :
   @OneRedAlg true t t' ->
-  [ tQuote t ⤳ tQuote t' ]
+  [ tQuote A t ⤳ tQuote A t' ]
+| quoteSubstDom {A A' t} : deep ->
+  dnf t -> ~ closed0 t ->
+  @OneRedAlg true A A' ->
+  [ tQuote A t ⤳ tQuote A' t ]
 | stepHead {t t' u} :
   @OneRedAlg true t t' ->
   [ tStep t u ⤳ tStep t' u ]
@@ -963,6 +978,7 @@ all: match goal with
 | H : [ ?t ⇶ ?u ] |- _ => now inversion H
 | H : [ ?t ⤳ ?u ] |- _ => inversion H; discriminate
 | _ => now f_equal
+| _ => contradiction
 | _ => idtac
 end.
 + match goal with
@@ -1117,7 +1133,7 @@ Lemma gredalg_wk {deep} (ρ : nat -> nat) (t u : term) : ren_inj ρ -> OneRedAlg
 Proof.
 intros Hρ Hred; induction Hred in ρ, Hρ |- *; cbn.
 all: try now (econstructor; intuition).
-all: try now (econstructor; try apply dnf_ren; try apply dne_ren; intuition eauto using upRen_term_term_inj).
+all: try now (econstructor; try apply dnf_ren; try apply dne_ren; intuition eauto using upRen_term_term_inj, closed0_ren_rev).
 + replace (t[a..]⟨ρ⟩) with (t⟨upRen_term_term ρ⟩)[a⟨ρ⟩..] by now bsimpl.
   now constructor.
 + rewrite quote_ren; tea.
@@ -1210,11 +1226,11 @@ end.
 all: repeat (match goal with H : ?t⟨?ρ⟩ = ?u⟨?ρ⟩ |- _ =>
   apply ren_inj_inv in H; [|eauto using upRen_term_term_inj]; []; subst; clear H
 end).
-all: try now (constructor; eauto using @OneRedAlg, whne_ren_rev, dne_ren_rev, dnf_ren_rev, upRen_term_term_inj).
+all: try now (constructor; eauto using @OneRedAlg, whne_ren_rev, dne_ren_rev, dnf_ren_rev, upRen_term_term_inj, closed0_ren).
 + assert (Hrw : forall t u, t⟨upRen_term_term ρ⟩[(u⟨ρ⟩)..] = (t[u..])⟨ρ⟩) by now asimpl.
   rewrite Hrw in Hu; apply ren_inj_inv in Hu; tea.
   subst; constructor.
-+ assert (closed0 t₀) by now eapply closed0_ren_rev.
++ assert (closed0 t₀2) by now eapply closed0_ren_rev.
   rewrite <- quote_ren in Hu; tea.
   apply ren_inj_inv in Hu; tea.
   rewrite <- Hu.
@@ -1315,7 +1331,8 @@ all: let t := lazymatch goal with |- ∑ n, ?t = _ => t end in
 + rewrite <- quote_ren; eauto using closed0_ren_rev.
 + eexists (qNat _); symmetry; eapply qNat_ren.
 + eexists (qEvalTm _ _); symmetry; apply qEvalTm_ren.
-+ eexists (tQuote _); reflexivity.
++ eexists (tQuote _ _); reflexivity.
++ eexists (tQuote _ _); reflexivity.
 + eexists (tStep _ _); reflexivity.
 + eexists (tStep _ _); reflexivity.
 + eexists (tReflect _ _); reflexivity.
@@ -1400,7 +1417,7 @@ Proof.
   econstructor; tea; now constructor.
 Qed.
 
-Lemma redalg_quote {t t'} : [t ⇶* t'] -> [tQuote t ⤳* tQuote t'].
+Lemma redalg_quote {A t t'} : [t ⇶* t'] -> [tQuote A t ⤳* tQuote A t'].
 Proof.
 induction 1; [reflexivity|].
 econstructor; [|tea].
@@ -1669,6 +1686,19 @@ transitivity (tIdElim A x P hr y t₀);
     constructor; eauto.
 Qed.
 
+Lemma dredalg_quote : forall A A₀ t t₀,
+  [t ⇶* t₀] -> dnf t₀ -> ~ closed0 t₀ ->
+  [A ⇶* A₀] -> [tQuote A t ⇶* tQuote A₀ t₀].
+Proof.
+intros A A₀ t t₀ Ht HRt Hnf HRA.
+transitivity (tQuote A t₀).
+- now eapply dred_red, redalg_quote.
+- clear - HRt Hnf HRA; induction HRA.
+  + reflexivity.
+  + econstructor; [|now eauto].
+    constructor; eauto.
+Qed.
+
 (** Stability of closedness by deep reduction *)
 
 Lemma dred_closedn : forall t u n, [t ⇶ u] -> closedn n t -> closedn n u.
@@ -1799,6 +1829,7 @@ induction 1; eauto using @RedClosureAlg, @OneRedAlg, gred_trans, gred_red,
 + etransitivity; [|apply dredalg_idElim; eauto using bigstep_dnf, bigstep_whne_dne].
   eauto using gred_red, bigstep_dnf, bigstep_whne_dne, redalg_idElim.
 + eauto 7 using gred_red, gred_trans, @OneRedAlg, redalg_quote, bigstep_dnf, redalg_one_step.
++ eauto 7 using gred_red, gred_trans, @OneRedAlg, dredalg_quote, bigstep_dnf, redalg_one_step.
 + eauto 8 using gred_red, gred_trans, @OneRedAlg, redalg_step, bigstep_dnf, redalg_one_step.
 + eauto 8 using gred_red, gred_trans, @OneRedAlg, redalg_reflect, bigstep_dnf, redalg_one_step.
 Qed.
@@ -1819,7 +1850,7 @@ all: try (inversion Ht; [|match goal with H : dne _ |- _ => now inversion H end]
 all: try match goal with H : dne _ |- _ => inversion H; subst end.
 all: try rewrite IHHr; eauto using dnf.
 all: try match goal with H : dne _ |- _ => now inversion H end.
-+ elim H1; unfold closed0; rewrite closedn_unannot; tea.
++ elim H3; unfold closed0; rewrite closedn_unannot; tea.
 + destruct H2 as [H2|H2].
   - elim H2; rewrite closedn_unannot; tea.
   - elim H2; rewrite unannot_qNat; apply closedn_qNat.

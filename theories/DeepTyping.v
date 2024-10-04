@@ -541,18 +541,25 @@ split.
   - constructor; tea; etransitivity; tea.
 Qed.
 
-Lemma NeTermDecl_tQuote : forall Γ n n₀, ~ closed0 n -> dnf n ->
-  NfTermDecl Γ (arr tNat tNat) n n₀ ->
-  NeTermDecl Γ tNat (tQuote n) (tQuote n₀).
+Lemma NeTermDecl_tQuote : forall Γ A A' A₀ n n₀, ~ closed0 n -> dnf n ->
+  [Γ |-[de] A] ->
+  [Γ |-[de] A ≅ A'] ->
+  NfTypeDecl Γ A' A₀ ->
+  NfTermDecl Γ A n n₀ ->
+  NeTermDecl Γ tNat (tQuote A' n) (tQuote A₀ n₀).
 Proof.
-intros * Hc Hnf [].
+intros * ? ? ? Hc Hnf [].
 split; [now constructor|].
 split.
-+ now apply dred_red, redalg_quote.
-+ do 2 constructor; [|tea].
++ apply dredalg_quote; tea.
+  - now replace n₀ with n by now eapply dred_dnf.
+  - apply Hnf.
++ do 2 constructor; eauto using nftydecl_nf.
   replace n₀ with n by now eapply dred_dnf.
   assumption.
-+ now constructor.
++ transitivity (tQuote A n).
+  - symmetry; constructor; tea; now eapply lrefl.
+  - constructor; tea; transitivity A'; tea; apply Hnf.
 Qed.
 
 Lemma NeTermDecl_tStep : forall Γ (t t' t₀ u u' u₀ : term),
@@ -1010,7 +1017,7 @@ Module DeepTypingProperties.
   #[export, refine] Instance TypingDeclProperties : TypingProperties (ta := nf) := {}.
   Proof.
   all: try apply DeclarativeTypingProperties.TypingDeclProperties.
-  + intros * []; now constructor.
+  + intros * ? []; now constructor.
   + intros * [] []; now econstructor.
   + intros * [] [] ?.
     now eapply DeclarativeTypingProperties.TypingDeclProperties.
@@ -1080,11 +1087,11 @@ Module DeepTypingProperties.
     - eapply NeTermDecl_tIdElim; tea.
       now eapply convtm_convneu.
     - now apply eqnf_tIdElim.
-  + intros ? n n' **; invnf; eexists.
+  + intros ? A A' n n' **; invnf; eexists.
     - now eapply convneu_quote.
-    - now apply NeTermDecl_tQuote.
-    - now apply NeTermDecl_tQuote.
-    - match goal with |- eqnf (tQuote ?t) (tQuote ?u) =>
+    - eapply NeTermDecl_tQuote; tea; now constructor.
+    - now eapply NeTermDecl_tQuote.
+    - match goal with |- eqnf (tQuote ?A ?t) (tQuote ?B ?u) =>
         replace t with n in * by eauto using dred_dnf, nftmdecl_red, nftmdecl_nf;
         replace u with n' in * by eauto using dred_dnf, nftmdecl_red, nftmdecl_nf
       end.

@@ -35,8 +35,8 @@ Inductive pred : term -> term -> Set :=
   [tIdElim A x P hr y e ⇉ tIdElim A' x' P' hr' y' e']
 | pred_idelimrefl {A x P hr hr' y B z} : [hr ⇉ hr'] ->
   [tIdElim A x P hr y (tRefl B z) ⇉ hr']
-| pred_quote {t t'} : [t ⇉ t'] -> [tQuote t ⇉ tQuote t']
-| pred_quoteeval {t} : dnf (unannot t) -> closed0 t -> [tQuote t ⇉ qNat (quote (erase t))]
+| pred_quote {A A' t t'} : [A ⇉ A'] -> [t ⇉ t'] -> [tQuote A t ⇉ tQuote A' t']
+| pred_quoteeval {A t} : dnf (unannot t) -> closed0 t -> [tQuote A t ⇉ qNat (quote (erase t))]
 | pred_step {t t' u u'} : [t ⇉ t'] -> [u ⇉ u'] -> [tStep t u ⇉ tStep t' u']
 | pred_stepeval {t u n k k'} :
   dnf (unannot t) -> closed0 t ->
@@ -171,7 +171,7 @@ all: try now (f_equal; eauto using pred).
 all: try now match goal with H : dne _ |- _ => f_equal; inversion H; subst; eauto using pred, dne, dnf end.
 all: try now do 2 match goal with H : dne _ |- _ => inversion H; subst end.
 + match goal with H : dne _ |- _ => inversion H; subst end.
-  assert (closed0 (unannot t)) by now apply closed0_unannot.
+  assert (closed0 (unannot t2)) by now apply closed0_unannot.
   contradiction.
 + match goal with H : dne _ |- _ => inversion H; subst end.
   assert (closed0 (unannot t1)) by now apply closed0_unannot.
@@ -325,15 +325,15 @@ all: try now saturate_diamond; eauto 10 using pred.
   clear IHt6; saturate_diamond.
   eexists; split; eauto using pred.
 + eexists; split; [|eapply pred_refl].
-  assert (Heq : unannot t = unannot t') by now apply pred_unannot_id.
-  assert (Hrw : erase t = erase t').
+  assert (Heq : unannot t2 = unannot t') by now apply pred_unannot_id.
+  assert (Hrw : erase t2 = erase t').
   { rewrite !erase_unannot_etared; now f_equal. }
   rewrite Hrw; constructor.
   - now rewrite <- Heq.
   - unfold closed0; rewrite <- closedn_unannot, <- Heq, closedn_unannot; tea.
 + eexists; split; [eapply pred_refl|].
-  assert (Heq : unannot t = unannot t') by now apply pred_unannot_id.
-  assert (Hrw : erase t = erase t').
+  assert (Heq : unannot t2 = unannot t') by now apply pred_unannot_id.
+  assert (Hrw : erase t2 = erase t').
   { rewrite !erase_unannot_etared; now f_equal. }
   rewrite Hrw; constructor.
   - now rewrite <- Heq.
@@ -461,7 +461,7 @@ intros A A' t t' Hr; revert A A'; induction Hr; intros; eauto using pred, pred_c
 Unshelve. all: exact U.
 Qed.
 
-Lemma pred_clos_quote : forall t t', [t ⇉* t'] -> [tQuote t ⇉* tQuote t'].
+Lemma pred_clos_quote : forall A t t', [t ⇉* t'] -> [tQuote A t ⇉* tQuote A t'].
 Proof.
 induction 1; eauto using pred, pred_refl, pred_clos.
 Qed.

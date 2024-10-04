@@ -1231,15 +1231,19 @@ intros rt ru rrun.
 unfold tTotal.
 assert (rNN : [Γ ||-< l > arr tNat (arr tNat tNat)]) by now apply SimpleArr.ArrRedTy.
 assert (rNNN : [Γ ||-< l > arr tNat (arr tNat (arr tNat tNat))]) by now apply SimpleArr.ArrRedTy.
+assert [Γ |- arr tNat tNat].
+{ now unshelve eapply escape. }
+assert [Γ |- arr tNat tNat ≅ arr tNat tNat].
+{ now unshelve eapply escapeEq, reflLRTyEq. }
 assert [rNat | Γ ||- u : tNat] by now eapply LRTmEqRed_l.
 assert [rNat | Γ ||- u' : tNat] by now eapply LRTmEqRed_r.
 unshelve eapply tEvalURedEq; tea.
 + unshelve eapply (SimpleArr.simple_appcongTerm (F := tNat)); tea.
   unshelve eapply (SimpleArr.simple_appcongTerm (F := tNat)); tea.
   - apply reflLRTmEq; irrelevance0; [reflexivity|]; tea.
-  - eapply QuoteRed, escapeEqTerm.
+  - eapply QuoteRed, escapeEqTerm; tea.
     eapply transEqTerm; [|apply LRTmEqSym]; tea.
-  - eapply QuoteRed, escapeEqTerm.
+  - eapply QuoteRed, escapeEqTerm; tea.
     eapply transEqTerm; [apply LRTmEqSym|]; tea.
   - now eapply QuoteRedEq, escapeEqTerm.
 + now eapply StepRedEq.
@@ -1356,6 +1360,8 @@ assert (rU : [Γ ||-<one> U]) by now apply LRU_, redUOne.
 assert [Γ |- run : arr tNat (arr tNat (arr tNat tNat))] by now eapply escapeTerm.
 assert [Γ |- tTotal t u ≅ tTotal t' u' : U].
 { now unshelve eapply escapeEqTerm, TotalURedEq. }
+assert [Γ |- arr tNat tNat].
+{ now unshelve eapply escape. }
 assert (Hnft := rtt'); apply escapeEqTerm, snty_nf in Hnft.
 assert (Hnfu := ruu'); apply escapeEqTerm, snty_nf in Hnfu.
 destruct Hnft as (t₀&t'₀&[]&[]&?&?&?).
@@ -1411,9 +1417,9 @@ remember (andb ct cu) as cb eqn:Hcb; symmetry in Hcb; destruct cb.
   { eapply reify_EvalStep; [tea|].
     now eapply dred_tApp_qNat_compat. }
 
-  assert [rNat | Γ ||- tQuote t ≅ qNat (quote (erase t₀)) : tNat].
+  assert [rNat | Γ ||- tQuote (arr tNat tNat) t ≅ qNat (quote (erase t₀)) : tNat].
   { eapply redSubstTerm; [now eapply qNatRed|].
-    transitivity (tQuote t₀).
+    transitivity (tQuote (arr tNat tNat) t₀).
     - now eapply redtm_quote.
     - eapply redtm_evalquote; tea; now eapply urefl. }
 
@@ -1428,7 +1434,7 @@ remember (andb ct cu) as cb eqn:Hcb; symmetry in Hcb; destruct cb.
     unshelve eapply (SimpleArr.simple_appcongTerm (F := tNat)); tea; [|apply qNatRed].
     now eapply reflLRTmEq. }
 
-  assert [rNatNat | Γ ||- tApp (tApp run (tQuote t)) u ≅
+  assert [rNatNat | Γ ||- tApp (tApp run (tQuote (arr tNat tNat) t)) u ≅
     tApp (tApp run (qNat (quote (erase t₀)))) (qNat n₀) : tPNat].
   { unshelve eapply (SimpleArr.simple_appcongTerm (F := tNat)); eauto using SimpleArr.ArrRedTy, qNatRed.
     unshelve eapply (SimpleArr.simple_appcongTerm (F := tNat)); eauto using SimpleArr.ArrRedTy, qNatRed, LRTmEqRed_l, LRTmEqRed_r.
@@ -1505,6 +1511,8 @@ Lemma qTmEvalRed {Γ l t t₀ u k v} (rΓ : [|-Γ]) (rNat := natRed (l := l) rΓ
 Proof.
 intros ?? Hnf Hc Heq rrun rt rnil rval.
 unshelve epose (rU := LRU_ (redUOne _)); [|tea|].
+assert [Γ |- arr tNat tNat].
+{ now unshelve eapply escape. }
 assert (rapp : [rNat | Γ ||- tApp t (qNat u) : tNat]).
 { unshelve eapply (SimpleArr.simple_appTerm (F := tNat)), qNatRed; tea. }
 assert (Hred : ∑ v, [tApp t (qNat u) ⇶* qNat v]).
@@ -1529,7 +1537,7 @@ assert (v' = v); [|subst v'].
   apply dred_erase_qNat_compat in Hred; cbn in Hred.
   rewrite erase_qNat in Hred.
   eapply qNat_inj, dredalg_det; eauto using dnf_qNat. }
-assert [rNat | Γ ||- tQuote t ≅ qNat (quote (erase t)) : tNat].
+assert [rNat | Γ ||- tQuote (arr tNat tNat) t ≅ qNat (quote (erase t)) : tNat].
 { eapply QuoteEvalRedEq; tea.
   now eapply dredalg_closed0. }
 assert (rEqLU : [rU | Γ ||- (tTotal t (qNat u)) ≅
@@ -1697,7 +1705,7 @@ apply TyCumValid.
 apply (evalValid (l := l)).
 + eapply (simple_appValid (F := tNat)); [eapply  (simple_appValid (F := tNat))|].
   - apply vrun.
-  - apply QuoteValid; tea.
+  - unshelve eapply QuoteValid; tea.
   - tea.
 + apply StepValid.
 + eapply (simple_appValid (F := tNat)); tea.
@@ -1915,6 +1923,10 @@ pose (rNat := natRed (l := l) wfΔ).
 pose (rNatNat := SimpleArr.ArrRedTy rNat rNat).
 unshelve eapply ElURedEq; tea.
 rewrite !tEval_subst; cbn - [LRbuild].
+assert [Δ |- arr tNat tNat].
+{ now unshelve eapply escape. }
+assert [Δ |- arr tNat tNat ≅ arr tNat tNat].
+{ now unshelve eapply escapeEq, reflLRTyEq. }
 assert [rNatNat | Δ ||- t[σ] ≅ t'[σ] : tPNat].
 { destruct vtt' as [rtt'].
   unshelve eapply LRTmEqIrrelevantCum', rtt'; now tea. }
@@ -1927,12 +1939,12 @@ unshelve eapply tEvalURedEq; tea.
     * apply reflLRTmEq.
       destruct vrun as [rrun].
       unshelve eapply LRTmRedIrrelevantCum', rrun; now tea.
-    * apply QuoteRed.
+    * apply QuoteRed; tea.
       now unshelve eapply escapeEqTerm, reflLRTmEq, vt.
-    * apply QuoteRed.
+    * apply QuoteRed; tea.
       unshelve eapply escapeEqTerm, reflLRTmEq; tea.
       now eapply LRTmEqRed_r.
-    * eapply QuoteRedEq.
+    * eapply QuoteRedEq; tea.
       now eapply escapeEqTerm.
   - now unshelve eapply LRTmRedIrrelevantCum', vu.
   - now unshelve eapply LRTmRedIrrelevantCum', vu'.

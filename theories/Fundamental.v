@@ -207,13 +207,14 @@ Section Fundamental.
     Unshelve. all: irrValid.
   Qed.
 
-  Lemma FundTmQuote : forall (Γ : context) (t : term),
-    FundTmEq Γ (arr tNat tNat) t t -> FundTm Γ tNat (tQuote t).
+  Lemma FundTmQuote : forall (Γ : context) (A t : term),
+    FundTy Γ A ->
+    FundTmEq Γ A t t -> FundTm Γ tNat (tQuote A t).
   Proof.
-    intros * []; unshelve econstructor.
+    intros * [] []; unshelve econstructor.
     + assumption.
     + apply natValid.
-    + eapply QuoteValid; irrValid.
+    + unshelve eapply QuoteValid; irrValid.
   Qed.
 
   Lemma FundTmStep : forall (Γ : context) (t u : term),
@@ -304,27 +305,31 @@ Section Fundamental.
       Unshelve. all: tea; try irrValid.
   Qed.
 
-  Lemma FundTmEqQuoteEval : forall (Γ : context) (t : term),
-    FundTmEq Γ (arr tNat tNat) t t -> dnf t -> Closed.closed0 t ->
-    FundTmEq Γ tNat (tQuote t) (qNat (quote (erase t))).
+  Lemma FundTmEqQuoteEval : forall (Γ : context) (A t : term),
+    FundTy Γ A ->
+    FundTmEq Γ A t t -> dnf t -> Closed.closed0 t ->
+    FundTmEq Γ tNat (tQuote A t) (qNat (quote (erase t))).
   Proof.
-  intros * []? ?; unshelve econstructor.
+  intros * [] []? ?; unshelve econstructor.
   - assumption.
   - apply natValid.
-  - eapply QuoteValid; irrValid.
+  - unshelve eapply QuoteValid; irrValid.
   - apply qNatValid.
-  - apply evalQuoteValid; [irrValid|tea|tea].
+  - unshelve eapply evalQuoteValid; tea.
   Qed.
 
-  Lemma FundTmEqQuoteCong : forall (Γ : context) (t t' : term),
-    FundTmEq Γ (arr tNat tNat) t t' -> FundTmEq Γ tNat (tQuote t) (tQuote t').
+  Lemma FundTmEqQuoteCong : forall (Γ : context) (A A' t t' : term),
+    FundTyEq Γ A A' ->
+    FundTmEq Γ A t t' -> FundTmEq Γ tNat (tQuote A t) (tQuote A' t').
   Proof.
-  intros * []; unshelve econstructor.
+  intros * [] []; unshelve econstructor.
   - assumption.
   - apply natValid.
-  - eapply QuoteValid; irrValid.
-  - eapply QuoteValid; irrValid.
-  - apply QuoteCongValid; irrValid.
+  - unshelve eapply QuoteValid; irrValid.
+  - unshelve eapply QuoteValid; [irrValid|].
+    unshelve (eapply conv; irrValid); irrValid.
+  - unshelve eapply QuoteCongValid; try irrValid.
+    unshelve (eapply conv; irrValid); irrValid.
   Qed.
 
   Lemma FundTmEqStepEval : forall Γ t u k v,

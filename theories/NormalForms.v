@@ -50,7 +50,7 @@ with dne : term -> Set :=
   | dne_tFst {n} : dne n -> dne (tFst n)
   | dne_tSnd {n} : dne n -> dne (tSnd n)
   | dne_tIdElim {A x P hr y e} : dnf A -> dnf x -> dnf P -> dnf hr -> dnf y -> dne e -> dne (tIdElim A x P hr y e)
-  | dne_tQuote {t} : ~ closed0 t -> dnf t -> dne (tQuote t)
+  | dne_tQuote {A t} : dnf A -> ~ closed0 t -> dnf t -> dne (tQuote A t)
   | dne_tStep {t u} : (~ is_closedn 0 t) + (~ is_closedn 0 u) -> dnf t -> dnf u -> dne (tStep t u)
   | dne_tReflect {t u} : (~ is_closedn 0 t) + (~ is_closedn 0 u) -> dnf t -> dnf u -> dne (tReflect t u)
 .
@@ -89,7 +89,7 @@ with whne : term -> Type :=
   | whne_tFst {p} : whne p -> whne (tFst p)
   | whne_tSnd {p} : whne p -> whne (tSnd p)
   | whne_tIdElim {A x P hr y e} : whne e -> whne (tIdElim A x P hr y e)
-  | whne_tQuote {t} :  ~ closed0 t -> dnf t -> whne (tQuote t)
+  | whne_tQuote {A t} : ~ closed0 t -> dnf t -> whne (tQuote A t)
   | whne_tStep {t u} : (~ is_closedn 0 t) + (~ is_closedn 0 u) -> dnf t -> dnf u -> whne (tStep t u)
   | whne_tReflect {t u} : (~ is_closedn 0 t) + (~ is_closedn 0 u) -> dnf t -> dnf u -> whne (tReflect t u)
 .
@@ -151,7 +151,7 @@ Section RenDnf.
 Lemma dnf_dne_ren : (forall t, dnf t -> forall ρ, dnf t⟨ρ⟩) × (forall t, dne t -> forall ρ, dne t⟨ρ⟩).
 Proof.
 apply dnf_dne_rect; cbn; intros; try now econstructor.
-+ constructor; [|now eauto].
++ constructor; try now eauto.
   intros Hc; now apply closed0_ren_rev in Hc.
 + constructor; [|now eauto|now eauto].
   destruct s; [left|right];
@@ -178,8 +178,8 @@ all: try now (
   match goal with H : dnf ?t |- _ => inversion H; subst; clear H end;
   match goal with H : dne ?t |- _ => inversion H; subst; clear H end;
   do 2 constructor; eauto; apply dne_dnf_whne; eauto using dnf_dne, dne_whne).
-+ inversion H; subst; inversion H2; subst.
-  do 2 constructor; [now eintros ?%closed0_ren|eauto].
++ inversion H; subst; inversion H4; subst.
+  do 2 constructor; [eauto|now eintros ?%closed0_ren|eauto].
 + inversion H; subst.
   constructor; [now eintros ?%closed0_ren|eauto].
 + inversion H; subst; inversion H4; subst.
@@ -393,7 +393,7 @@ Fixpoint is_nf ne t {struct t} := match t with
 | tSnd t => is_nf true t
 | tIdElim A x P hr y e =>
   is_nf false A && is_nf false x && is_nf false P && is_nf false hr && is_nf false y && is_nf true e
-| tQuote t => is_nf false t && negb (is_closedn 0 t)
+| tQuote A t => is_nf false A && is_nf false t && negb (is_closedn 0 t)
 | tStep t u => is_nf false t && is_nf false u && (negb (is_closedn 0 t) || negb (is_closedn 0 u))
 | tReflect t u => is_nf false t && is_nf false u && (negb (is_closedn 0 t) || negb (is_closedn 0 u))
 end.
@@ -417,7 +417,7 @@ Fixpoint is_wnf ne t {struct t} := match t with
 | tFst t => is_wnf true t
 | tSnd t => is_wnf true t
 | tIdElim A x P hr y e => is_wnf true e
-| tQuote t => is_dnf t && negb (is_closedn 0 t)
+| tQuote A t => is_dnf t && negb (is_closedn 0 t)
 | tStep t u => is_dnf t && is_dnf u && (negb (is_closedn 0 t) || negb (is_closedn 0 u))
 | tReflect t u => is_dnf t && is_dnf u && (negb (is_closedn 0 t) || negb (is_closedn 0 u))
 end.

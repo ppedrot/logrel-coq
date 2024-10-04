@@ -40,7 +40,7 @@ match t with
 | tId A t u => noccurn n A && noccurn n t && noccurn n u
 | tRefl A t => noccurn n A && noccurn n t
 | tIdElim A x P hr y t => noccurn n A && noccurn n x && noccurn (S (S n)) P && noccurn n hr && noccurn n y && noccurn n t
-| tQuote t => noccurn n t
+| tQuote A t => noccurn n A && noccurn n t
 | tStep t u => noccurn n t && noccurn n u
 | tReflect t u => noccurn n t && noccurn n u
 end.
@@ -155,7 +155,7 @@ Fixpoint erase (t : term) := match t with
 | tId A t u => tId (erase A) (erase t) (erase u)
 | tRefl A t => tRefl (erase A) (erase t)
 | tIdElim A x P hr y t => tIdElim (erase A) (erase x) (erase P) (erase hr) (erase y) (erase t)
-| tQuote t => tQuote (erase t)
+| tQuote A t => tQuote (erase A) (erase t)
 | tStep t u => tStep (erase t) (erase u)
 | tReflect t u => tReflect (erase t) (erase u)
 end.
@@ -462,7 +462,7 @@ Fixpoint unannot (t : term) := match t with
 | tId A t u => tId (unannot A) (unannot t) (unannot u)
 | tRefl A t => tRefl (unannot A) (unannot t)
 | tIdElim A x P hr y t => tIdElim (unannot A) (unannot x) (unannot P) (unannot hr) (unannot y) (unannot t)
-| tQuote t => tQuote (unannot t)
+| tQuote A t => tQuote (unannot A) (unannot t)
 | tStep t u => tStep (unannot t) (unannot u)
 | tReflect t u => tReflect (unannot t) (unannot u)
 end.
@@ -493,7 +493,7 @@ Fixpoint etared (t : term) := match t with
 | tId A t u => tId (etared A) (etared t) (etared u)
 | tRefl A t => tRefl (etared A) (etared t)
 | tIdElim A x P hr y t => tIdElim (etared A) (etared x) (etared P) (etared hr) (etared y) (etared t)
-| tQuote t => tQuote (etared t)
+| tQuote A t => tQuote (etared A) (etared t)
 | tStep t u => tStep (etared t) (etared u)
 | tReflect t u => tReflect (etared t) (etared u)
 end.
@@ -865,10 +865,10 @@ Proof.
 unfold eqnf; cbn; now intros -> -> -> -> -> ->.
 Qed.
 
-Lemma eqnf_tQuote {t t'} :
-  eqnf t t' -> eqnf (tQuote t) (tQuote t').
+Lemma eqnf_tQuote {A A' t t'} :
+  eqnf t t' -> eqnf A A' -> eqnf (tQuote A t) (tQuote A' t').
 Proof.
-unfold eqnf; cbn; now intros ->.
+unfold eqnf; cbn; now intros -> ->.
 Qed.
 
 Lemma eqnf_tStep {t t' u u'} :
@@ -1003,7 +1003,7 @@ unfold eqannot.
 apply dnf_dne_rect; cbn in *; intros.
 all: try match goal with H : _ = unannot ?u |- _ => destruct u; cbn in H; try discriminate H; []; try injection H; intros; subst end; eauto 8 using dnf, dne.
 + constructor; eauto.
-  unfold closed0; now rewrite <- closedn_unannot, <- H1, closedn_unannot.
+  unfold closed0; now rewrite <- closedn_unannot, <- H2, closedn_unannot.
 + constructor; eauto; destruct s.
   - left; unfold closed0; now rewrite <- closedn_unannot, <- H3, closedn_unannot.
   - right; unfold closed0; now rewrite <- closedn_unannot, <- H2, closedn_unannot.
@@ -1109,7 +1109,7 @@ Proof.
 unfold eqannot; cbn; congruence.
 Qed.
 
-Lemma eqannot_tQuote : forall t t', eqannot t t' -> eqannot (tQuote t) (tQuote t').
+Lemma eqannot_tQuote : forall A A' t t', eqannot t t' -> eqannot A A' -> eqannot (tQuote A t) (tQuote A' t').
 Proof.
 unfold eqannot; cbn; congruence.
 Qed.

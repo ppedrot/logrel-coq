@@ -38,7 +38,7 @@ Inductive sred : red_tag -> term -> term -> Set :=
 | sred_idelim {w A A' x x' P P' hr hr' y y' e e'} : [w →w* tIdElim A x P hr y e] ->
   [A →s A'] -> [x →s x'] -> [P →s P'] -> [hr →s hr'] -> [y →s y'] -> [e →s e'] ->
   [w →s tIdElim A' x' P' hr' y' e']
-| sred_quote {w t t'} : [w →w* tQuote t] -> [t →s t'] -> [w →s tQuote t']
+| sred_quote {w A A' t t'} : [w →w* tQuote A t] -> [t →s t'] -> [A →s A'] -> [w →s tQuote A' t']
 | sred_step {w t t' u u'} : [w →w* tStep t u] -> [t →s t'] -> [u →s u'] -> [w →s tStep t' u']
 | sred_reflect {w t t' u u'} : [w →w* tReflect t u] -> [t →s t'] -> [u →s u'] -> [w →s tReflect t' u']
 
@@ -72,11 +72,11 @@ Inductive sred : red_tag -> term -> term -> Set :=
 | wred_idElimSubst {A x P hr y e e'} :
   [e →w e'] ->
   [tIdElim A x P hr y e →w tIdElim A x P hr y e']
-| wred_termEvalAlg {t t'} :
+| wred_termEvalAlg {A t t'} :
   [t →s t'] ->
   dnf t' ->
   closed0 t' ->
-  [tQuote t →w qNat (quote (erase t'))]
+  [tQuote A t →w qNat (quote (erase t'))]
 | wred_termStepAlg {t t' u u' n k k'} :
   [t →s t'] ->
   [u →s qNat u'] ->
@@ -529,7 +529,8 @@ all: try (injection Hr; intros; subst; try now inversion Hn).
 + inversion Hn; subst.
   eexists; split; [|split]; [|now eapply whne_tQuote|].
   - now eapply redalg_quote, eval_dredalg.
-  - reflexivity.
+  - apply dredalg_quote; eauto using eval_dredalg.
+    reflexivity.
 + cbn in Hr; casenf; repeat expandopt.
   - destruct projT3; expandopt; injection Hr; intros; subst; clear Hr.
     now eelim Hnat.
@@ -587,7 +588,7 @@ all: try (eexists; split; [|now constructor; eauto]; []; cbn; congruence).
 + eexists; split; [|constructor].
   rewrite !unannot_subst1; congruence.
 + eexists; split; [reflexivity|].
-  replace (erase t) with (erase t'); [eauto using @OneRedAlg, closed0_eqannot|].
+  replace (erase t) with (erase t'2); [eauto using @OneRedAlg, closed0_eqannot|].
   rewrite !erase_unannot_etared; now f_equal.
 + symmetry in H; apply eqannot_qNat_inv in H; subst.
   eexists; split; [reflexivity|].
@@ -599,6 +600,10 @@ all: try (eexists; split; [|now constructor; eauto]; []; cbn; congruence).
   econstructor; eauto using closed0_eqannot.
   replace (erase t'1) with (erase t); [eauto using @OneRedAlg, closed0_eqannot|].
   rewrite !erase_unannot_etared; now f_equal.
++ eexists; split; [|eapply quoteSubstDom; eauto].
+  - now apply eqannot_tQuote.
+  - intros Hc; eapply closed0_eqannot in Hc; [|symmetry; tea].
+    unfold notT in *; auto.
 Qed.
 
 Lemma eqannot_redalg_qred : forall deep t t' u,
@@ -626,6 +631,8 @@ destruct Hr as (r'&?&?).
 exists r'; split; [|now etransitivity].
 etransitivity; tea.
 Qed.
+
+#[local] Hint Unfold notT : core.
 
 Lemma sred_dredalg_gen : forall tag t u, sred tag t u ->
   match tag with
@@ -738,10 +745,16 @@ all: try now (eapply qred_dqred, IHsred; eauto using whnf, whne; eapply qred_ref
   destruct IHsred6 as (y₀&?&?); tea.
   eexists; split; [now apply eqannot_tIdElim|].
   apply dredalg_idElim; eauto using dnf_eqannot, dne_eqannot.
-+ eapply qred_dqred, IHsred1; eauto using whnf, whne.
-  destruct IHsred2 as (t₀&?&?); tea.
-  eexists; split; [|now eapply redalg_quote].
-  unfold eqannot; cbn; now f_equal.
++ destruct IHsred2 as (t₀&?&?); tea.
+  eapply qred_trans with (tQuote A t₀).
+  - eapply qred_dqred, IHsred1; eauto using whnf, whne, dnf_eqannot, closed0_eqannot, Symmetric_eqannot.
+    * do 2 constructor; eauto using whnf, whne, dnf_eqannot, closed0_eqannot, Symmetric_eqannot.
+    * eexists; split; [|now eapply redalg_quote].
+      unfold eqannot; cbn; now f_equal.
+  - destruct IHsred3 as (A₀&?&?); tea.
+    eexists; split; [now apply eqannot_tQuote|].
+    eapply dredalg_quote; unfold notT in *; eauto using dnf_eqannot, closed0_eqannot, Symmetric_eqannot.
+    reflexivity.
 + eapply qred_dqred, IHsred1; eauto using whnf, whne.
   destruct IHsred2 as (t₀&?&?); tea.
   destruct IHsred3 as (u₀&?&?); tea.
@@ -896,9 +909,9 @@ all: try now (eapply qred_dqred, IHsred; eauto using whnf, whne; eapply qred_ref
     eexists; split; [|tea].
     etransitivity; [tea|]; now apply eqannot_tIdElim.
   - discriminate.
-+ eapply qred_trans with (tQuote t').
++ eapply qred_trans with (tQuote A t').
   - destruct IHsred as (t₀&?&?); [tea|].
-    eexists; split; [now apply eqannot_tQuote|].
+    eexists; split; [apply eqannot_tQuote; tea; reflexivity|].
     now apply redalg_quote.
   - destruct H1 as (r₀&?&Hr).
     eexists; split; [tea|].
@@ -956,7 +969,7 @@ Inductive erased : term -> term -> Set :=
 | erased_tIdElim {A A' x x' P P' hr hr' y y' e e'} : 
   erased A A' -> erased x x' -> erased P P' -> erased hr hr' -> erased y y' -> erased e e' ->
   erased (tIdElim A x P hr y e) (tIdElim A' x' P' hr' y' e')
-| erased_tQuote {t t'} : erased t t' -> erased (tQuote t) (tQuote t')
+| erased_tQuote {A A' t t'} : erased A A' -> erased t t' -> erased (tQuote A t) (tQuote A' t')
 | erased_tStep {t t' u u'} : erased t t' -> erased u u' -> erased (tStep t u) (tStep t' u')
 | erased_tReflect {t t' u u'} : erased t t' -> erased u u' -> erased (tReflect t u) (tReflect t' u')
 (** Additional erasure primitives *)
@@ -1091,7 +1104,7 @@ all: eauto 10 using erased.
 Qed.
 
 Fixpoint is_shallow t := match t with
-| tQuote _ | tReflect _ _ | tStep _ _ => false
+| tQuote _ _ | tReflect _ _ | tStep _ _ => false
 | tApp t _ => is_shallow t
 | tNatElim _ _ _ t => is_shallow t
 | tIdElim _ _ _ _ _ t => is_shallow t
