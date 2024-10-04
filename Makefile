@@ -14,7 +14,10 @@ Makefile.coq: _CoqProject
 
 force _CoqProject Makefile: ;
 
+autosubst:
+	autosubst -f -no-static -s ucoq -v ge813 -allfv theories/AutoSubst/Ast.sig -o theories/AutoSubst/Ast.v
+
 %: Makefile.coq force
 	@+$(MAKE) -f Makefile.coq $@
 
-.PHONY: all clean force logrel
+.PHONY: all clean force logrel autosubst

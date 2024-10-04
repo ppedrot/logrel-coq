@@ -273,8 +273,10 @@ term :=
         (subst_term sigma_term s3) (subst_term sigma_term s4)
         (subst_term sigma_term s5)
   | tQuote s0 => tQuote (subst_term sigma_term s0)
-  | tStep s0 s1 => tStep (subst_term sigma_term s0) (subst_term sigma_term s1)
-  | tReflect s0 s1 => tReflect (subst_term sigma_term s0) (subst_term sigma_term s1)
+  | tStep s0 s1 =>
+      tStep (subst_term sigma_term s0) (subst_term sigma_term s1)
+  | tReflect s0 s1 =>
+      tReflect (subst_term sigma_term s0) (subst_term sigma_term s1)
   end.
 
 Lemma upId_term_term (sigma : nat -> term) (Eq : forall x, sigma x = tRel x)
@@ -693,7 +695,8 @@ subst_term tau_term (ren_term xi_term s) = subst_term theta_term s :=
       congr_tStep (compRenSubst_term xi_term tau_term theta_term Eq_term s0)
         (compRenSubst_term xi_term tau_term theta_term Eq_term s1)
   | tReflect s0 s1 =>
-      congr_tReflect (compRenSubst_term xi_term tau_term theta_term Eq_term s0)
+      congr_tReflect
+        (compRenSubst_term xi_term tau_term theta_term Eq_term s0)
         (compRenSubst_term xi_term tau_term theta_term Eq_term s1)
   end.
 
@@ -805,7 +808,8 @@ ren_term zeta_term (subst_term sigma_term s) = subst_term theta_term s :=
         (compSubstRen_term sigma_term zeta_term theta_term Eq_term s4)
         (compSubstRen_term sigma_term zeta_term theta_term Eq_term s5)
   | tQuote s0 =>
-      congr_tQuote (compSubstRen_term sigma_term zeta_term theta_term Eq_term s0)
+      congr_tQuote
+        (compSubstRen_term sigma_term zeta_term theta_term Eq_term s0)
   | tStep s0 s1 =>
       congr_tStep
         (compSubstRen_term sigma_term zeta_term theta_term Eq_term s0)
@@ -1077,8 +1081,7 @@ Fixpoint rinst_inst_term (xi_term : nat -> nat) (sigma_term : nat -> term)
            s2) (rinst_inst_term xi_term sigma_term Eq_term s3)
         (rinst_inst_term xi_term sigma_term Eq_term s4)
         (rinst_inst_term xi_term sigma_term Eq_term s5)
-  | tQuote s0 =>
-      congr_tQuote (rinst_inst_term xi_term sigma_term Eq_term s0)
+  | tQuote s0 => congr_tQuote (rinst_inst_term xi_term sigma_term Eq_term s0)
   | tStep s0 s1 =>
       congr_tStep (rinst_inst_term xi_term sigma_term Eq_term s0)
         (rinst_inst_term xi_term sigma_term Eq_term s1)
@@ -1149,39 +1152,41 @@ Qed.
 Class Up_term X Y :=
     up_term : X -> Y.
 
-#[global] Instance Subst_term : (Subst1 _ _ _) := @subst_term.
+#[global]Instance Subst_term : (Subst1 _ _ _) := @subst_term.
 
-#[global] Instance Up_term_term : (Up_term _ _) := @up_term_term.
+#[global]Instance Up_term_term : (Up_term _ _) := @up_term_term.
 
-#[global] Instance Ren_term : (Ren1 _ _ _) := @ren_term.
+#[global]Instance Ren_term : (Ren1 _ _ _) := @ren_term.
 
-#[global] Instance VarInstance_term : (Var _ _) := @tRel.
+#[global]
+Instance VarInstance_term : (Var _ _) := @tRel.
 
 Notation "[ sigma_term ]" := (subst_term sigma_term)
-  ( at level 1, left associativity, only printing) : fscope.
+( at level 1, left associativity, only printing)  : fscope.
 
 Notation "s [ sigma_term ]" := (subst_term sigma_term s)
-  ( at level 7, left associativity, only printing) : subst_scope.
+( at level 7, left associativity, only printing)  : subst_scope.
 
-Notation "↑__term" := up_term (only printing) : subst_scope.
+Notation "↑__term" := up_term (only printing)  : subst_scope.
 
-Notation "↑__term" := up_term_term (only printing) : subst_scope.
+Notation "↑__term" := up_term_term (only printing)  : subst_scope.
 
 Notation "⟨ xi_term ⟩" := (ren_term xi_term)
-  ( at level 1, left associativity, only printing) : fscope.
+( at level 1, left associativity, only printing)  : fscope.
 
 Notation "s ⟨ xi_term ⟩" := (ren_term xi_term s)
-  ( at level 7, left associativity, only printing) : subst_scope.
+( at level 7, left associativity, only printing)  : subst_scope.
 
-Notation "'var'" := tRel ( at level 1, only printing) : subst_scope.
+Notation "'var'" := tRel ( at level 1, only printing)  : subst_scope.
 
 Notation "x '__term'" := (@ids _ _ VarInstance_term x)
-  ( at level 5, format "x __term", only printing) : subst_scope.
+( at level 5, format "x __term", only printing)  : subst_scope.
 
-Notation "x '__term'" := (tRel x) ( at level 5, format "x __term") :
-  subst_scope.
+Notation "x '__term'" := (tRel x) ( at level 5, format "x __term")  :
+subst_scope.
 
-#[global] Instance subst_term_morphism :
+#[global]
+Instance subst_term_morphism :
  (Proper (respectful (pointwise_relation _ eq) (respectful eq eq))
     (@subst_term)).
 Proof.
@@ -1190,14 +1195,16 @@ exact (fun f_term g_term Eq_term s t Eq_st =>
          (ext_term f_term g_term Eq_term s) t Eq_st).
 Qed.
 
-#[global] Instance subst_term_morphism2 :
+#[global]
+Instance subst_term_morphism2 :
  (Proper (respectful (pointwise_relation _ eq) (pointwise_relation _ eq))
     (@subst_term)).
 Proof.
 exact (fun f_term g_term Eq_term s => ext_term f_term g_term Eq_term s).
 Qed.
 
-#[global] Instance ren_term_morphism :
+#[global]
+Instance ren_term_morphism :
  (Proper (respectful (pointwise_relation _ eq) (respectful eq eq))
     (@ren_term)).
 Proof.
@@ -1206,7 +1213,8 @@ exact (fun f_term g_term Eq_term s t Eq_st =>
          (extRen_term f_term g_term Eq_term s) t Eq_st).
 Qed.
 
-#[global] Instance ren_term_morphism2 :
+#[global]
+Instance ren_term_morphism2 :
  (Proper (respectful (pointwise_relation _ eq) (pointwise_relation _ eq))
     (@ren_term)).
 Proof.
@@ -1320,8 +1328,7 @@ Fixpoint allfv_term (p_term : nat -> Prop) (s : term) {struct s} : Prop :=
               (and (allfv_term p_term s3)
                  (and (allfv_term p_term s4)
                     (and (allfv_term p_term s5) True)))))
-  | tQuote s0 =>
-      allfv_term p_term s0
+  | tQuote s0 => and (allfv_term p_term s0) True
   | tStep s0 s1 =>
       and (allfv_term p_term s0) (and (allfv_term p_term s1) True)
   | tReflect s0 s1 =>
@@ -1401,8 +1408,7 @@ Fixpoint allfvTriv_term (p_term : nat -> Prop) (H_term : forall x, p_term x)
               (conj (allfvTriv_term p_term H_term s3)
                  (conj (allfvTriv_term p_term H_term s4)
                     (conj (allfvTriv_term p_term H_term s5) I)))))
-  | tQuote s0 =>
-      allfvTriv_term p_term H_term s0
+  | tQuote s0 => conj (allfvTriv_term p_term H_term s0) I
   | tStep s0 s1 =>
       conj (allfvTriv_term p_term H_term s0)
         (conj (allfvTriv_term p_term H_term s1) I)
@@ -1720,7 +1726,11 @@ allfv_term p_term s -> allfv_term q_term s :=
                           end) I)))))
   | tQuote s0 =>
       fun HP =>
-      (allfvImpl_term p_term q_term H_term s0 HP)
+      conj
+        (allfvImpl_term p_term q_term H_term s0
+           match HP with
+           | conj HP _ => HP
+           end) I
   | tStep s0 s1 =>
       fun HP =>
       conj
@@ -1776,7 +1786,7 @@ Fixpoint allfvRenL_term (p_term : nat -> Prop) (xi_term : nat -> nat)
 (s : term) {struct s} :
 allfv_term p_term (ren_term xi_term s) ->
 allfv_term (funcomp p_term xi_term) s :=
-  match s as s return 
+  match s as s return
       allfv_term p_term (ren_term xi_term s) ->
       allfv_term (funcomp p_term xi_term) s  with
   | tRel s0 => fun H => H
@@ -2065,7 +2075,10 @@ allfv_term (funcomp p_term xi_term) s :=
                           end) I)))))
   | tQuote s0 =>
       fun H =>
-        (allfvRenL_term p_term xi_term s0 H)
+      conj
+        (allfvRenL_term p_term xi_term s0 match H with
+                                          | conj H _ => H
+                                          end) I
   | tStep s0 s1 =>
       fun H =>
       conj
@@ -2121,8 +2134,8 @@ Fixpoint allfvRenR_term (p_term : nat -> Prop) (xi_term : nat -> nat)
 (s : term) {struct s} :
 allfv_term (funcomp p_term xi_term) s ->
 allfv_term p_term (ren_term xi_term s) :=
-  match s 
-   return 
+  match s
+   return
 allfv_term (funcomp p_term xi_term) s ->
 allfv_term p_term (ren_term xi_term s)
   with
@@ -2414,7 +2427,10 @@ allfv_term p_term (ren_term xi_term s)
                           end) I)))))
   | tQuote s0 =>
       fun H =>
-        (allfvRenR_term p_term xi_term s0 H)
+      conj
+        (allfvRenR_term p_term xi_term s0 match H with
+                                          | conj H _ => H
+                                          end) I
   | tStep s0 s1 =>
       fun H =>
       conj
